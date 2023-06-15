@@ -1,63 +1,20 @@
 const express = require('express');
 const cors = require('cors');
 const mqtt = require('mqtt');
-const { OPCUAClient } = require("node-opcua-client");
 
-const cron = require('node-cron');
+const { IoT } = require("./models/iot");
 
 var bodyParser = require("body-parser");
 
-async function main() {
+// DB Config
+require('./database/config').dbConnection();
 
-    const connectionStrategy = {
-        initialDelay: 1000,
-        maxRetry: 1
-      };
-
-    try {
-        const endpointUrl = "opc.tcp://15.44.0.65:4840";
-        console.log("Connecting to client...");
-        const client = OPCUAClient.create({
-            connectionStrategy: connectionStrategy,
-            endpointMustExist: true,
-        });
-        await client.connect(endpointUrl);
-        console.log("connected !");
-        const session = await client.createSession();
-        console.log("session created !");
-
-        const maxAge = 0;
-        const nodeOne = {
-            nodeId: "ns=1;i=2",
-        };
-        const nodeTwo = {
-            nodeId: "ns=1;i=3",
-        };
-        const nodeThree = {
-            nodeId: "ns=1;i=4",
-        };
-
-        cron.schedule('* * * * * *', async function () {
-            const data = await session.read(nodeOne, maxAge);
-            const data1 = await session.read(nodeTwo, maxAge);
-            const data2 = await session.read(nodeThree, maxAge);
-            console.log(data.value.value);
-            console.log(data1.value.value);
-            console.log(data2.value.value);
-        });
-
-    } catch (err) {
-        console.log("Ha ocurrido un error :(")
-        if (err instanceof Error) {
-            console.log(err.message);
-        }
-        process.exit(0);
-    }
-}
+// Inicializamos OPCUA
+//require('./opcua/index').opcuaConnection();
 
 require('dotenv').config();
 
-const client = mqtt.connect('mqtt://10.25.97.81');
+const client = mqtt.connect('mqtt://10.25.66.229');
 
 // App de Express
 const app = express();
@@ -73,19 +30,38 @@ const server = require('http').createServer(app);
 
 client.on('connect', function () {
     console.log("Conectado");
-    client.subscribe('electricConsumption', function (err) {
+    client.subscribe('voltaje', function (err) {
         if (!err) {
-            console.log("Suscrito");
+            console.log("Suscrito a Voltaje");
+        }
+    });
+    client.subscribe('corriente', function (err) {
+        if (!err) {
+            console.log("Suscrito a Corriente");
+        }
+    });
+    client.subscribe('potencia', function (err) {
+        if (!err) {
+            console.log("Suscrito a Potencia");
+        }
+    });
+    client.subscribe('frecuencia', function (err) {
+        if (!err) {
+            console.log("Suscrito a Frecuencia");
+        }
+    });
+    client.subscribe('energia', function (err) {
+        if (!err) {
+            console.log("Suscrito a Energía");
         }
     });
 });
 
 app.use('/api/v1/iot', require('./routes/iot.routes'));
 app.use('/api/v1/cobot', require('./routes/cobot.routes'));
+app.use('/api/v1/scada', require('./routes/scada.routes'));
 
 server.listen(process.env.PORT, (err) => {
-
-    main();
 
     if (err) throw new Error(err);
 
@@ -93,7 +69,32 @@ server.listen(process.env.PORT, (err) => {
 
 });
 
-client.on('message', function (topic, message) {
-    const electricConsumption = message.toString()
+client.on('message', async function (topic, message) {
+
+    const topico = topic.toString()
+    const mensaje = message.toString()
+
+    console.log(topico)
+    console.log(mensaje)
+
+    switch (topico) {
+        case 'voltaje':
+            await IoT.postVoltaje(mensaje)
+            break;
+        case 'corriente':
+            await IoT.postCorriente(mensaje)
+            break;
+        case 'frecuencia':
+            await IoT.postFrecuencia(mensaje)
+            break;
+        case 'energia':
+            await IoT.postEnergia(mensaje)
+            break;
+        case 'potencia':
+            await IoT.postPotencia(mensaje)
+            break;
+        default:
+            break;
+    }
 
 });

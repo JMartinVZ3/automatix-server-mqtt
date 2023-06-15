@@ -7,4 +7,6 @@ router.post('/electric', IoTController.postElectricConsumption)
 
 router.post('/rpms', IoTController.postRpms)
 
+router.get('/voltaje', IoTController.getVoltage)
+
 module.exports = router

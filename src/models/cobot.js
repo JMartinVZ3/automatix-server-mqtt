@@ -23,6 +23,17 @@ const Cobot = {
             console.log(error.details)
         }
     },
+    postTimePerBox: async (data) => {
+        try {
+            const response = await firebase.db.collection('AutomatixData')
+            .doc("Q4xXhH1YjIwL7AZUzFt2")
+            .update({ 'OpcData.Cobot.TimePerBox': data}, { merge: true })
+
+            return response
+        } catch (error) {
+            console.log(error.details)
+        }
+    },
 }
 
 module.exports = {
